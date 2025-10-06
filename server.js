@@ -1,21 +1,21 @@
-// ==============================
-// Blackbox AI Integration Server
+// ======================================================
+// 🔒 Blackbox AI Private Server (For Personal Use Only)
 // Ready for Render deployment
-// ==============================
+// ======================================================
 
 import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
-import { execSync } from "child_process";
 import fs from "fs";
+import { execSync } from "child_process";
 
-// --- Auto-create package.json if missing ---
+// --- Auto-create package.json if missing (for Render) ---
 if (!fs.existsSync("./package.json")) {
   fs.writeFileSync(
     "package.json",
     JSON.stringify(
       {
-        name: "blackbox-ai-server",
+        name: "blackbox-ai-private",
         version: "1.0.0",
         main: "server.js",
         type: "module",
@@ -32,27 +32,39 @@ if (!fs.existsSync("./package.json")) {
       2
     )
   );
-  console.log("📦 Created package.json automatically!");
+  console.log("📦 Auto-generated package.json");
 }
 
-// --- Ensure dependencies are installed when running locally ---
+// --- Local npm install (Render will skip this) ---
 try {
   execSync("npm install", { stdio: "ignore" });
-} catch (e) {
-  console.log("⚠️ Skipped npm install (Render will handle it).");
+} catch {
+  console.log("⚙️ Skipped npm install (handled by Render).");
 }
 
-// --- App setup ---
+// --- Express app setup ---
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- Simple private access control ---
+const ACCESS_KEY = process.env.ACCESS_KEY || "my_private_key"; // set your secret in Render
+
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/favicon.ico") return next();
+  const key = req.headers["x-access-key"];
+  if (key !== ACCESS_KEY) {
+    return res.status(403).json({ error: "Access denied. Invalid key." });
+  }
+  next();
+});
+
 // --- Root route ---
 app.get("/", (req, res) => {
   res.send(`
-    <h1>✅ Blackbox AI API Server</h1>
-    <p>Server is running successfully.</p>
-    <p>Use POST <code>/chat</code> with JSON: {"prompt": "your message"}</p>
+    <h2>✅ Blackbox AI Private Server</h2>
+    <p>Only authorized users can access the API.</p>
+    <p>Use POST <code>/chat</code> with header <b>x-access-key: ${ACCESS_KEY}</b> and JSON: {"prompt": "your text"}</p>
   `);
 });
 
@@ -87,4 +99,4 @@ app.post("/chat", async (req, res) => {
 
 // --- Start server ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Private AI Server running on port ${PORT}`));
